@@ -91,11 +91,12 @@ import (
 // Status to "405 Method Not Allowed".
 type PatternServeMux struct {
 	handlers map[string][]*patHandler
+	notFound http.Handler
 }
 
 // New returns a new PatternServeMux.
 func New() *PatternServeMux {
-	return &PatternServeMux{make(map[string][]*patHandler)}
+	return &PatternServeMux{make(map[string][]*patHandler), http.NotFoundHandler()}
 }
 
 // ServeHTTP matches r.URL.Path against its routing table using the rules
@@ -125,7 +126,7 @@ func (p *PatternServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(allowed) == 0 {
-		http.NotFound(w, r)
+		p.notFound.ServeHTTP(w, r)
 		return
 	}
 
@@ -171,6 +172,10 @@ func (p *PatternServeMux) Patch(pat string, h http.Handler) {
 	p.Add("PATCH", pat, h)
 }
 
+func (p *PatternServeMux) NotFound(h http.Handler) {
+	p.notFound = h
+}
+
 // Add will register a pattern with a handler for meth requests.
 func (p *PatternServeMux) Add(meth, pat string, h http.Handler) {
 	p.handlers[meth] = append(p.handlers[meth], &patHandler{pat, h})
@@ -198,6 +203,9 @@ func (p *PatternServeMux) OptionsFunc(pat string, f http.HandlerFunc) { p.Option
 
 // PatchFunc is like Patch, but it takes an http.HandlerFunc instead of an http.Handler.
 func (p *PatternServeMux) PatchFunc(pat string, f http.HandlerFunc) { p.Patch(pat, f) }
+
+// NotFoundFunc is like NotFound, but it takes an http.HandlerFunc instead of an http.Handler.
+func (p *PatternServeMux) NotFoundFunc(f http.HandlerFunc) { p.NotFound(f) }
 
 // Tail returns the trailing string in path after the final slash for a pat ending with a slash.
 //

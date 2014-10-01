@@ -89,6 +89,41 @@ func TestPatMatch(t *testing.T) {
 	assert.Equal(t, url.Values{":name": {"bar"}}, params)
 }
 
+func TestDefaultNotFound(t *testing.T) {
+	p := New()
+
+	r, err := http.NewRequest("GET", "/unknown", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	p.ServeHTTP(rr, r)
+
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
+func TestCustomNotFound(t *testing.T) {
+	p := New()
+
+	var ok bool
+	p.NotFound(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ok = true
+		w.WriteHeader(http.StatusNotFound)
+	}))
+
+	r, err := http.NewRequest("GET", "/unknown", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	p.ServeHTTP(rr, r)
+
+	assert.T(t, ok)
+	assert.Equal(t, http.StatusNotFound, rr.Code)
+}
+
 func TestPatRoutingHit(t *testing.T) {
 	p := New()
 
